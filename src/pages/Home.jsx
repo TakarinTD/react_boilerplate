@@ -1,6 +1,7 @@
 import React from 'react';
-import HomeContainer from '../containers/Home';
+import ApiManageContainer from '../containers/ApiManage';
 
-export default function Home() {
-  return <HomeContainer />;
+export default function Home(props) {
+  const { history } = props;
+  return <ApiManageContainer history={history} />;
 }

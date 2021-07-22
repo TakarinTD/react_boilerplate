@@ -31,7 +31,7 @@ export default styled.div`
       width: 100%;
     }
   }
-  .headerText {
+  .headTitle {
     margin: 0;
     line-height: 30px;
     flex: 1;
@@ -115,7 +115,6 @@ export default styled.div`
     border: 1px solid rgba(0, 0, 0, 0.12);
   }
   .table-container {
-    /* background: ${COLOR.gray[200]}; */
     border: 0px;
     border-radius: 6px;
     box-shadow: rgb(0 0 0 / 14%) 0px 1px 4px 0px;

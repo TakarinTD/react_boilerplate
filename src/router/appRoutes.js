@@ -20,7 +20,14 @@ export default [
     isPrivate: true,
   },
   {
-    path: routes.INFO_API,
+    path: routes.APIS,
+    component: CreateApi,
+    exact: true,
+    restricted: false,
+    isPrivate: true,
+  },
+  {
+    path: routes.API_SETS,
     component: CreateApi,
     exact: true,
     restricted: false,

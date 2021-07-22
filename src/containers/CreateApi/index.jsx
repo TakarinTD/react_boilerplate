@@ -1,16 +1,9 @@
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable prettier/prettier */
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import {
   Typography,
-  Card,
-  CardContent,
   Grid,
-  FormLabel,
-  Select,
-  MenuItem,
   Button,
   Table,
   TableBody,
@@ -23,18 +16,9 @@ import {
   DialogContent,
   TextField,
   DialogActions,
-  InputLabel,
-  FormControl,
-  Tooltip,
-  RadioGroup,
-  Radio,
-  Checkbox,
-  FormControlLabel,
   CircularProgress,
   Paper,
   Icon,
-  Input,
-  InputAdornment,
 } from '@material-ui/core';
 import { Icon as Iconify } from '@iconify/react';
 import codeJson from '@iconify-icons/mdi/code-json';
@@ -42,23 +26,26 @@ import googleSpreadsheet from '@iconify-icons/mdi/google-spreadsheet';
 import * as XLSX from 'xlsx';
 import AddCircleIcon from '@material-ui/icons/AddCircle';
 import CloudUpload from '@material-ui/icons/CloudUpload';
-import randomstring from 'randomstring';
-import Tvkd from 'tieng-viet-khong-dau';
 import DeleteIcon from '@material-ui/icons/Delete';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { JsonEditor } from 'jsoneditor-react';
 import 'jsoneditor-react/es/editor.min.css';
 import ace from 'brace';
+import randomstring from 'randomstring';
 import 'brace/mode/json';
 import { toastMsgError, toastSuccess } from '../../commons/Toastify';
 import StyleCreateApi from './createApi.style';
-import { createApi, getApi, updateApi } from '../../apis/apiManage';
+import { createApi, getApi, getApiSet, updateApi } from '../../apis/apiManage';
+import Info from './info';
+import HeaderValues from './headerValues';
+import Define from './define';
 
 const clientSecret = require('../../constants/clientSecret.json');
 
 export default function CreateForm({ history }) {
   const { t } = useTranslation();
-  const { apiId, pageType } = useParams();
+  const { id, apiId, pageType } = useParams();
+  const [api, setApi] = useState({});
   const [headerValues, setHeaderValues] = useState({});
   const [selected, setSelected] = useState({});
   const [rows, setRows] = useState([]);
@@ -74,7 +61,6 @@ export default function CreateForm({ history }) {
   const [newDataset, setNewDataset] = useState({});
   const [name, setName] = useState('');
   const [newApiId, setNewApiId] = useState();
-  const [id, setId] = useState('');
   const [openDialog, setOpenDialog] = useState({
     title: '',
     type: '',
@@ -82,7 +68,7 @@ export default function CreateForm({ history }) {
   const [url, setUrl] = useState('');
   const [keyData, setKeyData] = useState('');
   const [dataStructure, setDataStructure] = useState({
-    keyData: '',
+    keyData,
   });
   const [schema, setSchema] = useState([]);
   const [json, setJSON] = useState([]);
@@ -106,14 +92,24 @@ export default function CreateForm({ history }) {
     });
   };
   useEffect(() => {
-    if (apiId) {
-      getApi(apiId)
+    if (id) {
+      getApi(id)
         .then((res) => {
-          setId(res.result._id);
+          setApi(res.result);
           setName(res.result.name);
-          setNewApiId(res.result.apiId);
-          setSchema(res.result.schema);
-          setDataStructure(res.result.dataStructure);
+          if (apiId) {
+            const apiSet = res.result.apiSets.find(
+              (item) => item.apiId === apiId,
+            );
+            if (!apiSet) {
+              toastMsgError(t('Api set does not exist'));
+              history.push(`/`);
+              return;
+            }
+            setNewApiId(apiSet.apiId);
+            setDataStructure(apiSet.dataStructure);
+            setSchema(apiSet.schema);
+          }
         })
         .catch(() => {
           toastMsgError(t('ERROR'));
@@ -140,7 +136,6 @@ export default function CreateForm({ history }) {
       setRows(dataApi);
       handleClickOpenDialog('Set up data structure', 'headerValue');
     } catch (e) {
-      console.log(e);
       toastMsgError(t('JSON ERROR'));
     }
   };
@@ -199,11 +194,6 @@ export default function CreateForm({ history }) {
       await doc.loadInfo();
       const sheet = doc.sheetsById[sheetId];
       const tmpRows = await sheet.getRows();
-      // if (!checkHeaderValues(sheet.headerValues)) {
-      //   toastMsgError(t('ERROR'));
-      //   setIsLoading(false);
-      //   return;
-      // };
       const headerValue = sheet.headerValues.reduce((acc, cur) => {
         return { ...acc, [cur]: 'String' };
       }, {});
@@ -265,7 +255,8 @@ export default function CreateForm({ history }) {
         ...newDataset,
         keyData:
           dataStructure.keyData === '' ||
-          dataStructure.keyData === 'autoGenerate'
+          dataStructure.keyData === 'autoGenerate' ||
+          !dataStructure.keyData
             ? randomstring.generate(16)
             : newDataset[dataStructure.keyData],
       };
@@ -281,7 +272,10 @@ export default function CreateForm({ history }) {
     }
   };
   const checkId = (item) => {
-    getApi(item)
+    if ((apiId && item === apiId) || item === '') {
+      return;
+    }
+    getApiSet(id, item)
       .then((res) => {
         if (res.result) {
           setCheckIdExist(true);
@@ -305,35 +299,27 @@ export default function CreateForm({ history }) {
       setIsLoading(false);
       return;
     }
-    getApi(newApiId)
-      .then((res) => {
-        if (res.result) {
-          toastMsgError(t('ID exist'));
-          setCheckIdExist(true);
-          setIsLoading(false);
-          return;
-        }
-        createApi({
-          name,
-          apiId: newApiId,
-          dataStructure,
-          schema,
-        })
-          .then(() => {
-            toastSuccess(t('SUCCESS'));
-            history.push(`/`);
-            setIsLoading(false);
-          })
-          .catch(() => {
-            toastMsgError(t('ERROR'));
-            setIsLoading(false);
-          });
-        setCheckIdExist(false);
+    const apiSets = [
+      {
+        apiId: newApiId,
+        dataStructure,
+        schema,
+      },
+    ];
+    createApi({
+      name,
+      apiSets,
+    })
+      .then(() => {
+        toastSuccess(t('SUCCESS'));
+        history.push(`/`);
+        setIsLoading(false);
       })
       .catch(() => {
-        setIsLoading(false);
         toastMsgError(t('ERROR'));
+        setIsLoading(false);
       });
+    setCheckIdExist(false);
   };
   const update = () => {
     setIsLoading(true);
@@ -342,21 +328,47 @@ export default function CreateForm({ history }) {
       setIsLoading(false);
       return;
     }
-    if (!name) {
-      toastMsgError(t('Please name the api'));
-      setIsLoading(false);
+    checkId(newApiId);
+    if (checkIdExist) {
+      toastMsgError(t('ID exist'));
       return;
     }
-    const updateFields = { name, apiId: newApiId, schema };
+
+    let { apiSets } = api;
+    if (pageType === 'create-api-set') {
+      apiSets = [
+        ...api.apiSets,
+        {
+          apiId: newApiId,
+          dataStructure,
+          schema,
+        },
+      ];
+    }
+    if (pageType === 'view-api-set') {
+      const index = apiSets.findIndex((item) => item.apiId === apiId);
+      if (index === -1) {
+        toastMsgError(t('Api set does not exist'));
+        history.push(`/`);
+      }
+      apiSets[index] = {
+        ...apiSets[index],
+        apiId: newApiId,
+        schema,
+      };
+    }
+    const updateFields = { apiSets };
     updateApi(id, updateFields)
       .then(() => {
         toastSuccess(t('SUCCESS'));
         setIsLoading(false);
+        history.push(`/`);
       })
       .catch(() => {
         toastMsgError(t('ERROR'));
         setIsLoading(false);
       });
+    setIsLoading(false);
     setCheckIdExist(false);
   };
   const handleFileSelected = (file) => {
@@ -417,13 +429,41 @@ export default function CreateForm({ history }) {
       };
     }
   };
+  const define = () => {
+    try {
+      if (!selected.map || selected.length === 0) {
+        toastMsgError(t('Error, please check the data structure!'));
+        return;
+      }
+      let tmp = {};
+      selected.map((item) => {
+        tmp = {
+          ...tmp,
+          [item.field]: item.type,
+        };
+        return tmp;
+      });
+      if (!Object.keys(tmp) || Object.hasOwnProperty.call(tmp, '')) {
+        toastMsgError(t('Error, please check the data structure!'));
+        return;
+      }
+      setDataStructure({
+        ...dataStructure,
+        selected: tmp,
+        keyData: selected[keyData] ? selected[keyData].field : '',
+      });
+      handleCloseDiaLog();
+    } catch (error) {
+      toastMsgError(t('ERROR'));
+    }
+  };
   return (
     <StyleCreateApi>
       <Paper className="createApiContainer">
         <div className="cardHeader">
-          {pageType !== 'view' && (
+          {!pageType && (
             <>
-              <Typography variant="h5" className="headerText">
+              <Typography variant="h5" className="headTitle">
                 {t('Create api')}
               </Typography>
               <Button
@@ -460,9 +500,10 @@ export default function CreateForm({ history }) {
               </Button>
             </>
           )}
-          {pageType === 'view' && (
-            <Typography variant="h5" className="headerText">
-              {apiId}
+          {pageType && (
+            <Typography variant="h5" className="headTitle">
+              {name}
+              {apiId && `/${apiId}`}
             </Typography>
           )}
           {isLoading ? (
@@ -470,7 +511,7 @@ export default function CreateForm({ history }) {
           ) : (
             <Button
               className="button"
-              onClick={() => (pageType !== 'view' ? addApi() : update())}
+              onClick={() => (!pageType ? addApi() : update())}
             >
               <Icon className="buttonIcon">save</Icon>
               {t('Save api')}
@@ -478,61 +519,15 @@ export default function CreateForm({ history }) {
           )}
         </div>
         <div className="container">
-          <div className="card">
-            <Typography gutterBottom variant="h6" className="title-card">
-              {t('Basic information')}
-            </Typography>
-            <Card className="card-info-container">
-              <CardContent className="card--info-content">
-                <Grid container className="basic-info-container">
-                  <Grid item xs={3} sm={3}>
-                    <TextField
-                      label={t('Api name')}
-                      name="nameApi"
-                      value={name}
-                      onChange={(e) => {
-                        e.persist();
-                        setName(e.target.value);
-                      }}
-                    />
-                  </Grid>
-                  <Grid item sx={3} sm={3}>
-                    <FormControl>
-                      <InputLabel>ID</InputLabel>
-                      <Input
-                        value={newApiId || ''}
-                        onChange={(e) => {
-                          e.persist();
-                          setNewApiId(e.target.value);
-                          checkId(e.target.value);
-                        }}
-                        endAdornment={(
-                          <InputAdornment
-                            className="buttonAuto"
-                            position="end"
-                            onClick={() => {
-                              let tmpNameApi = Tvkd.c(name);
-                              tmpNameApi = tmpNameApi.replace(/ /g, '_');
-                              const randomId = `${tmpNameApi}_${randomstring.generate(
-                                4,
-                              )}`;
-                              setNewApiId(randomId);
-                              checkId(randomId);
-                            }}
-                          >
-                            Auto-ID
-                          </InputAdornment>
-                        )}
-                      />
-                    </FormControl>
-                    {checkIdExist && (
-                      <Typography color="error">{t('ID exist')}</Typography>
-                    )}
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
-          </div>
+          <Info
+            pageType={pageType}
+            name={name}
+            setName={setName}
+            newApiId={newApiId}
+            setNewApiId={setNewApiId}
+            checkId={checkId}
+            checkIdExist={checkIdExist}
+          />
           <Typography gutterBottom variant="h6" className="title-card">
             {t('Data structure')}
           </Typography>
@@ -569,9 +564,6 @@ export default function CreateForm({ history }) {
                                 );
                               }}
                             />
-                            {/* <div className="tree">
-                            <Icon>home</Icon>
-                          </div> */}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -666,10 +658,10 @@ export default function CreateForm({ history }) {
         open={openDialog.title !== ''}
         onClose={handleCloseDiaLog}
         fullWidth
-        style={{ margin: '1%', overflow: 'hidden' }}
+        style={{ margin: '1%', overflow: 'hidden', width: 'auto' }}
       >
         <DialogTitle id="form-dialog-title">{t(openDialog.title)}</DialogTitle>
-        <DialogContent style={{ overflow: 'hidden' }}>
+        <DialogContent style={{ width: 'auto' }}>
           {openDialog.type === 'json' && (
             <JsonEditor
               value={json}
@@ -686,10 +678,10 @@ export default function CreateForm({ history }) {
               <TextField
                 key={key}
                 margin="dense"
-                value={newDataset[key]}
+                value={newDataset[key] || ''}
                 type={
                   dataStructure.selected[key].toLowerCase() === 'number'
-                    ? 'Number'
+                    ? 'number'
                     : ''
                 }
                 label={key}
@@ -704,230 +696,24 @@ export default function CreateForm({ history }) {
               />
             ))}
           {openDialog.type === 'headerValue' && (
-            <>
-              <FormControl variant="outlined" fullWidth>
-                <InputLabel id="demo-simple-select-outlined-label">
-                  {t('Identifier field')}
-                </InputLabel>
-                <Select
-                  label={t('Identifier field')}
-                  value={keyData}
-                  onChange={(e) => {
-                    setKeyData(e.target.value);
-                  }}
-                >
-                  <MenuItem value="autoGenerate">
-                    <em style={{ color: 'orange' }}>{t('Auto generate')}</em>
-                  </MenuItem>
-                  {Object.keys(headerValues).map((key) => (
-                    <MenuItem key={key} value={key}>
-                      {key}
-                    </MenuItem>
-                  ))}
-                </Select>
-                {/* {keyData === '' && (
-                    <FormHelperText style={{ color: 'red' }}>
-                      {t('The identifier field will automatically generate')}
-                    </FormHelperText>
-                  )} */}
-              </FormControl>
-              <hr />
-              <FormControl>
-                <FormLabel>{t('Do you load data?')}</FormLabel>
-                <RadioGroup
-                  row
-                  name="dataLoad"
-                  value={dataLoad}
-                  onChange={(e) => {
-                    setDataLoad(e.target.value);
-                  }}
-                >
-                  <FormControlLabel
-                    value="yes"
-                    control={<Radio />}
-                    label={t('yes')}
-                  />
-                  <FormControlLabel
-                    value="no"
-                    control={<Radio />}
-                    label={t('no')}
-                  />
-                </RadioGroup>
-              </FormControl>
-              <hr />
-              <Typography>
-                {t('Select the data field to add and its data type')}
-              </Typography>
-              <Typography>
-                {selected.length} {t('selected field')}
-              </Typography>
-              <TableContainer style={{ maxHeight: '500px' }}>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>
-                        <Tooltip title={t('Select all')} placement="right">
-                          <Checkbox
-                            indeterminate={
-                              Object.keys(selected).length > 0 &&
-                              Object.keys(selected).length <
-                                Object.keys(headerValues).length
-                            }
-                            checked={
-                              Object.keys(headerValues).length > 0 &&
-                              Object.keys(selected).length ===
-                                Object.keys(headerValues).length
-                            }
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelected(headerValues);
-                                return;
-                              }
-                              setSelected({});
-                            }}
-                          />
-                        </Tooltip>
-                      </TableCell>
-                      <TableCell style={{ fontWeight: 'bold' }}>
-                        Tên trường dữ liệu
-                      </TableCell>
-                      <TableCell style={{ fontWeight: 'bold' }}>
-                        Kiểu dữ liệu
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {Object.keys(headerValues).map((key) => {
-                      const isItemSelected =
-                        Object.prototype.hasOwnProperty.call(selected, key);
-                      return (
-                        <TableRow hover role="checkbox" tabIndex={-1} key={key}>
-                          <TableCell>
-                            <Checkbox
-                              checked={isItemSelected}
-                              onClick={() => {
-                                let newSelected = { ...selected };
-                                if (isItemSelected) delete newSelected[key];
-                                else
-                                  newSelected = {
-                                    ...newSelected,
-                                    [key]: headerValues[key],
-                                  };
-                                setSelected(newSelected);
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>{key}</TableCell>
-                          <TableCell>
-                            <FormControl variant="outlined">
-                              <Select
-                                value={headerValues[key]}
-                                onChange={(e) => {
-                                  setHeaderValues({
-                                    ...headerValues,
-                                    [key]: e.target.value,
-                                  });
-                                  if (isItemSelected)
-                                    setSelected({
-                                      ...selected,
-                                      [key]: e.target.value,
-                                    });
-                                }}
-                              >
-                                <MenuItem value="String">String</MenuItem>
-                                <MenuItem value="Number">Number</MenuItem>
-                              </Select>
-                            </FormControl>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </>
+            <HeaderValues
+              keyData={keyData}
+              setKeyData={setKeyData}
+              headerValues={headerValues}
+              dataLoad={dataLoad}
+              setDataLoad={setDataLoad}
+              selected={selected}
+              setSelected={setSelected}
+              setHeaderValues={setHeaderValues}
+            />
           )}
           {openDialog.type === 'define' && (
-            <TableContainer style={{ maxHeight: '500px' }}>
-              <Table stickyHeader>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>
-                      <Tooltip title={t('Add a data field')} placement="right">
-                        <Button
-                          className="button-structure"
-                          // onClick={() => handleClickOpenDialog('Set up data structure', 'define')}
-                        >
-                          <Icon className="buttonIcon">add</Icon>
-                        </Button>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell style={{ fontWeight: 'bold' }}>
-                      Tên trường dữ liệu
-                    </TableCell>
-                    <TableCell style={{ fontWeight: 'bold' }}>
-                      Kiểu dữ liệu
-                    </TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {/* {Object.keys(headerValues).map((key) => {
-                    const isItemSelected = Object.prototype.hasOwnProperty.call(
-                      selected,
-                      key,
-                    );
-                    return ( */}
-                  <TableRow hover role="checkbox" tabIndex={-1}>
-                    <TableCell>
-                      <Button className="button-structure">
-                        <DeleteIcon
-                          color="secondary"
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        // value={newApiId || ''}
-                        // onChange={(e) => {
-                        //   e.persist();
-                        //   setNewApiId(e.target.value);
-                        //   checkId(e.target.value);
-                        // }}
-                        endAdornment={(
-                          <InputAdornment>
-                            <Icon className="button-check" style={{ color: 'green' }}>check</Icon>
-                          </InputAdornment>
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <FormControl variant="outlined">
-                        <Select
-                          value="String"
-                          // onChange={(e) => {
-                          //       setHeaderValues({
-                          //         ...headerValues,
-                          //         [key]: e.target.value,
-                          //       });
-                          //       if (isItemSelected)
-                          //         setSelected({
-                          //           ...selected,
-                          //           [key]: e.target.value,
-                          //         });
-                          //     }}
-                        >
-                          <MenuItem value="String">String</MenuItem>
-                          <MenuItem value="Number">Number</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </TableCell>
-                  </TableRow>
-                  {/* );
-                  })} */}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <Define
+              selected={selected}
+              setSelected={setSelected}
+              keyData={keyData}
+              setKeyData={setKeyData}
+            />
           )}
           {openDialog.type === 'value' && (
             <TextField
@@ -958,7 +744,6 @@ export default function CreateForm({ history }) {
               )}: ${clientSecret.client_email}`}
               fullWidth
               onChange={(e) => {
-                e.persist();
                 setUrl(e.target.value);
               }}
             />
@@ -983,8 +768,7 @@ export default function CreateForm({ history }) {
               {t('Confirm')}
             </Button>
           )}
-          {(openDialog.type === 'headerValue' ||
-            openDialog.type === 'headerValueJson') && (
+          {openDialog.type === 'headerValue' && (
             <Button onClick={handleAddDataSheet} color="primary">
               {t('Confirm')}
             </Button>
@@ -1001,7 +785,7 @@ export default function CreateForm({ history }) {
             </>
           )}
           {openDialog.type === 'define' && (
-            <Button onClick={handleEditValue} color="primary">
+            <Button onClick={define} color="primary">
               {t('Confirm')}
             </Button>
           )}
