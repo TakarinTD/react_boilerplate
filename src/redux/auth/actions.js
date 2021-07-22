@@ -1,26 +1,46 @@
 export const actionTypes = {
-  LOGIN: 'LOGIN',
-  LOGIN_SUCCESS: 'LOGIN_SUCCESS',
-  LOGIN_FAILURE: 'LOGIN_FAILURE',
+  LOGOUT: 'LOGOUT',
+  IS_LOGOUT: 'IS_LOGOUT',
+  LOGOUT_SUCCESS: 'LOGOUT_SUCCESS',
+
+  VERIFY_TOKEN: 'VERIFY_TOKEN',
+  VERIFY_TOKEN_SUCCESS: 'VERIFY_TOKEN_SUCCESS',
+  VERIFY_TOKEN_FAILURE: 'VERIFY_TOKEN_FAILURE',
 };
 
-export function login(email, password) {
+export function logout() {
   return {
-    type: actionTypes.LOGIN,
-    email,
-    password,
+    type: actionTypes.LOGOUT,
+  };
+}
+export function updateIsLogout() {
+  return {
+    type: actionTypes.IS_LOGOUT,
   };
 }
 
-export function loginSuccess(accessToken) {
+export function logoutSuccess() {
   return {
-    type: actionTypes.LOGIN_SUCCESS,
+    type: actionTypes.LOGOUT_SUCCESS,
+  };
+}
+
+export function verifyToken(accessToken) {
+  return {
+    type: actionTypes.VERIFY_TOKEN,
     accessToken,
   };
 }
 
-export function loginFailure() {
+export function verifyTokenSuccess(payload) {
   return {
-    type: actionTypes.LOGIN_FAILURE,
+    type: actionTypes.VERIFY_TOKEN_SUCCESS,
+    payload,
+  };
+}
+
+export function verifyTokenFailure() {
+  return {
+    type: actionTypes.VERIFY_TOKEN_FAILURE,
   };
 }

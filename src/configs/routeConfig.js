@@ -1,0 +1,3 @@
+const adminMenu = {};
+
+export { adminMenu };

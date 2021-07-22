@@ -1,4 +1,5 @@
 export default {
   HOME: '/',
-  LOGIN: '/login',
+  CREATE_API: '/create-api',
+  INFO_API: '/api-view/:apiId/:pageType',
 };

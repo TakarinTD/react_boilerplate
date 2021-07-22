@@ -1,17 +1,26 @@
 import React from 'react';
-import { Route, Redirect } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import {
+  Route,
+  // Redirect
+} from 'react-router-dom';
+// import { useSelector } from 'react-redux';
+import LayoutAdmin from '../containers/Dashboard/LayoutAdmin';
 
-import routes from '../constants/route';
+// import routes from '../constants/route';
 
 export default function PrivateRoute({ component: Component, ...rest }) {
-  const accessToken = useSelector((state) => state.auth.accessToken);
+  // const accessToken = useSelector((state) => state.auth.accessToken);
 
   return (
     <Route
       {...rest}
-      render={(props) =>
-        accessToken ? <Component {...props} /> : <Redirect to={routes.LOGIN} />
+      render={
+        (props) => (
+          <LayoutAdmin {...props} {...rest}>
+            <Component {...props} />
+          </LayoutAdmin>
+        )
+        // accessToken ? <Component {...props} /> : <Redirect to={routes.LOGIN} />
       }
     />
   );
