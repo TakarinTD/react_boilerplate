@@ -26,6 +26,7 @@
   "Do you load data?":"Do you load data?",
   "ERROR": "ERROR!",
   "Error, please check the dataset again!":"Error, please check the dataset again!",
+  "Error, please check the data structure!": "Error, please check the data structure!",
   "Field name": "Field name",
   "Field name and data type not null": "Field name and data type not null",
   "Input api": "Input api",

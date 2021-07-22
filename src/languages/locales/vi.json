@@ -26,6 +26,7 @@
   "Do you load data?":"Bạn có lấy luôn dữ liệu không?",
   "ERROR": "Lỗi!",
   "Error, please check the dataset again!": "Lỗi, vui lòng kiểm tra lại tập dữ liệu!",
+  "Error, please check the data structure!": "Lỗi, vui lòng kiểm tra lại cấu trúc dữ liệu!",
   "Field name": "Tên trường",
   "Field name and data type not null": "Tên trường và kiểu dữ liệu không được rỗng",
   "Input api": "Nhập api",

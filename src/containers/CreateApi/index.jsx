@@ -80,9 +80,9 @@ export default function CreateForm({ history }) {
     type: '',
   });
   const [url, setUrl] = useState('');
-  const [keyData, setKeyData] = useState('');
+  const [keyData, setKeyData] = useState();
   const [dataStructure, setDataStructure] = useState({
-    keyData: '',
+    keyData,
   });
   const [schema, setSchema] = useState([]);
   const [json, setJSON] = useState([]);
@@ -97,7 +97,7 @@ export default function CreateForm({ history }) {
       title: '',
       type: '',
     });
-    setKeyData('');
+    setKeyData();
     setDataLoad('yes');
     setSelected({});
     Object.keys(newDataset).map((key) => {
@@ -265,7 +265,7 @@ export default function CreateForm({ history }) {
         ...newDataset,
         keyData:
           dataStructure.keyData === '' ||
-          dataStructure.keyData === 'autoGenerate'
+          dataStructure.keyData === 'autoGenerate'||!dataStructure.keyData
             ? randomstring.generate(16)
             : newDataset[dataStructure.keyData],
       };
@@ -416,6 +416,30 @@ export default function CreateForm({ history }) {
         handleClickOpenDialog('Set up data structure', 'headerValue');
       };
     }
+  };
+  const define = () => {
+    try {
+      if (Object.keys(selected)||Object.hasOwnProperty.call(selected,"")) {
+        toastMsgError(t('Error, please check the data structure!'));
+        return;
+      }
+      setDataStructure({
+        ...dataStructure,
+        selected,
+        keyData,
+      });
+      handleCloseDiaLog();
+    } catch (error) {
+      toastMsgError(t('ERROR'));
+    }
+  };
+  console.log(dataStructure);
+  const renameKey = (object, key, newKey) => {
+    const clonedObj = { ...object };
+    const targetKey = clonedObj[key];
+    delete clonedObj[key];
+    clonedObj[newKey] = targetKey;
+    return clonedObj;
   };
   return (
     <StyleCreateApi>
@@ -666,10 +690,10 @@ export default function CreateForm({ history }) {
         open={openDialog.title !== ''}
         onClose={handleCloseDiaLog}
         fullWidth
-        style={{ margin: '1%', overflow: 'hidden' }}
+        style={{ margin: '1%', overflow: 'hidden', width: 'auto' }}
       >
         <DialogTitle id="form-dialog-title">{t(openDialog.title)}</DialogTitle>
-        <DialogContent style={{ overflow: 'hidden' }}>
+        <DialogContent style={{ overflow: 'hidden', width: 'auto' }}>
           {openDialog.type === 'json' && (
             <JsonEditor
               value={json}
@@ -689,7 +713,7 @@ export default function CreateForm({ history }) {
                 value={newDataset[key]}
                 type={
                   dataStructure.selected[key].toLowerCase() === 'number'
-                    ? 'Number'
+                    ? 'number'
                     : ''
                 }
                 label={key}
@@ -725,11 +749,6 @@ export default function CreateForm({ history }) {
                     </MenuItem>
                   ))}
                 </Select>
-                {/* {keyData === '' && (
-                    <FormHelperText style={{ color: 'red' }}>
-                      {t('The identifier field will automatically generate')}
-                    </FormHelperText>
-                  )} */}
               </FormControl>
               <hr />
               <FormControl>
@@ -848,7 +867,7 @@ export default function CreateForm({ history }) {
             </>
           )}
           {openDialog.type === 'define' && (
-            <TableContainer style={{ maxHeight: '500px' }}>
+            <TableContainer style={{ maxHeight: '500px', width: 'auto' }}>
               <Table stickyHeader>
                 <TableHead>
                   <TableRow>
@@ -856,7 +875,12 @@ export default function CreateForm({ history }) {
                       <Tooltip title={t('Add a data field')} placement="right">
                         <Button
                           className="button-structure"
-                          // onClick={() => handleClickOpenDialog('Set up data structure', 'define')}
+                          onClick={() =>
+                            setSelected({
+                              ...selected,
+                              '': 'String',
+                            })
+                          }
                         >
                           <Icon className="buttonIcon">add</Icon>
                         </Button>
@@ -868,63 +892,66 @@ export default function CreateForm({ history }) {
                     <TableCell style={{ fontWeight: 'bold' }}>
                       Kiểu dữ liệu
                     </TableCell>
+                    <TableCell style={{ fontWeight: 'bold' }}>
+                      Trường định danh
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {/* {Object.keys(headerValues).map((key) => {
-                    const isItemSelected = Object.prototype.hasOwnProperty.call(
-                      selected,
-                      key,
-                    );
-                    return ( */}
-                  <TableRow hover role="checkbox" tabIndex={-1}>
-                    <TableCell>
-                      <Button className="button-structure">
-                        <DeleteIcon
-                          color="secondary"
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        // value={newApiId || ''}
-                        // onChange={(e) => {
-                        //   e.persist();
-                        //   setNewApiId(e.target.value);
-                        //   checkId(e.target.value);
-                        // }}
-                        endAdornment={(
-                          <InputAdornment>
-                            <Icon className="button-check" style={{ color: 'green' }}>check</Icon>
-                          </InputAdornment>
-                        )}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <FormControl variant="outlined">
-                        <Select
-                          value="String"
-                          // onChange={(e) => {
-                          //       setHeaderValues({
-                          //         ...headerValues,
-                          //         [key]: e.target.value,
-                          //       });
-                          //       if (isItemSelected)
-                          //         setSelected({
-                          //           ...selected,
-                          //           [key]: e.target.value,
-                          //         });
-                          //     }}
-                        >
-                          <MenuItem value="String">String</MenuItem>
-                          <MenuItem value="Number">Number</MenuItem>
-                        </Select>
-                      </FormControl>
-                    </TableCell>
-                  </TableRow>
-                  {/* );
-                  })} */}
+                  {selected &&
+                    Object.keys(selected).map((key) => (
+                      <TableRow hover role="checkbox" tabIndex={-1}>
+                        <TableCell>
+                          <Button
+                            className="button-structure"
+                            onClick={() => {
+                              const tmp = { ...selected };
+                              delete tmp[key];
+                              setSelected(tmp);
+                              if (keyData === key) setKeyData();
+                            }}
+                          >
+                            <DeleteIcon
+                              color="secondary"
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </Button>
+                        </TableCell>
+                        <TableCell>
+                          <TextField
+                            variant="outlined"
+                            value={key}
+                            onChange={(e) => {
+                              const newKey = e.target.value;
+                              if (keyData === key) setKeyData(newKey);
+                              setSelected(renameKey(selected, key, newKey));
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <FormControl variant="outlined">
+                            <Select
+                              value={selected[key]}
+                              onChange={(e) =>
+                                setSelected({
+                                  ...selected,
+                                  [key]: e.target.value,
+                                })
+                              }
+                            >
+                              <MenuItem value="String">String</MenuItem>
+                              <MenuItem value="Number">Number</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </TableCell>
+                        <TableCell>
+                          <Checkbox
+                            checked={keyData === key}
+                            onChange={() => setKeyData(key)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -983,8 +1010,7 @@ export default function CreateForm({ history }) {
               {t('Confirm')}
             </Button>
           )}
-          {(openDialog.type === 'headerValue' ||
-            openDialog.type === 'headerValueJson') && (
+          {openDialog.type === 'headerValue' && (
             <Button onClick={handleAddDataSheet} color="primary">
               {t('Confirm')}
             </Button>
@@ -1001,7 +1027,7 @@ export default function CreateForm({ history }) {
             </>
           )}
           {openDialog.type === 'define' && (
-            <Button onClick={handleEditValue} color="primary">
+            <Button onClick={define} color="primary">
               {t('Confirm')}
             </Button>
           )}
