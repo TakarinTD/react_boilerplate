@@ -6,7 +6,7 @@ const axiosClient = axios.create({
   baseURL: `${process.env.REACT_APP_API_DOMAIN}/api/v1`,
   responseType: 'json',
   timeout: 15 * 1000,
-  transformResponse: [(data) => camelCase(data, { deep: true })],
+  transformResponse: [(data) => data],
 });
 
 axiosClient.interceptors.request.use(async (config) => {
@@ -18,7 +18,9 @@ axiosClient.interceptors.request.use(async (config) => {
 
 axiosClient.interceptors.response.use(
   (response) => {
-    return response.data;
+    return response.data.notSnakeCase
+      ? response.data
+      : camelCase(response.data, { deep: true });
   },
   (error) => {
     // Handle error
